@@ -37,6 +37,46 @@ jobs:
       - run: yarn test
       - run: yarn tsc
 
+  test-illumos:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: full
+      RUSTFLAGS: -D warnings
+      CC: /opt/gcc-14/bin/gcc
+      CARGO_TARGET_X86_64_UNKNOWN_ILLUMOS_LINKER: /opt/gcc-14/bin/gcc
+    defaults:
+      run:
+        shell: cpa.sh {0}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Start VM
+        uses: cross-platform-actions/action@v1
+        with:
+          operating_system: omnios
+          architecture: x86-64
+          version: 'r151058'
+          shell: bash
+          memory: 8G
+          cpu_count: 3
+          environment_variables: 'CARGO_TERM_COLOR RUST_BACKTRACE RUSTFLAGS CC CARGO_TARGET_X86_64_UNKNOWN_ILLUMOS_LINKER'
+      - name: Install build dependencies
+        run: sudo pkg install -v developer/gcc14
+      - name: Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf --output rustup.sh
+          sh rustup.sh -y --profile minimal --default-toolchain none
+          source "$HOME/.cargo/env"
+          rustc --version
+      - name: Build
+        run: |
+          source "$HOME/.cargo/env"
+          cargo build --release --features cli
+      - name: Test
+        run: |
+          source "$HOME/.cargo/env"
+          cargo test --all-features
+
   test-wasm:
     runs-on: ubuntu-latest
     steps:
